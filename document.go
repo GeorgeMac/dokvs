@@ -16,13 +16,25 @@ type AnyBytes interface {
 	~[]byte | ~string
 }
 
-type Schema[D any] interface {
+type CollectionSchema[D any] interface {
 	Collection() []byte
 	PrimaryKey(D) []byte
 }
 
+type Schema[D any] struct {
+	collection   []byte
+	primaryKeyFn func(D) []byte
+}
+
+func (s Schema[D]) Collection() []byte    { return s.collection }
+func (s Schema[D]) PrimaryKey(d D) []byte { return s.primaryKeyFn(d) }
+
+func NewSchema[D any](name string, primaryKeyFn func(D) []byte) CollectionSchema[D] {
+	return Schema[D]{collection: []byte(name), primaryKeyFn: primaryKeyFn}
+}
+
 type Collection[D any, K AnyBytes] struct {
-	schema     Schema[D]
+	schema     CollectionSchema[D]
 	serializer Serializer[D]
 }
 
@@ -32,7 +44,7 @@ func WithSerializer[D any, K AnyBytes](serializer Serializer[D]) func(*Collectio
 	}
 }
 
-func NewCollection[D any, K AnyBytes](schema Schema[D], opts ...func(*Collection[D, K])) Collection[D, K] {
+func NewCollection[D any, K AnyBytes](schema CollectionSchema[D], opts ...func(*Collection[D, K])) Collection[D, K] {
 	c := Collection[D, K]{schema: schema, serializer: JSONSerializer[D]{}}
 
 	ApplyAll(&c, opts...)

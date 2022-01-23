@@ -5,20 +5,15 @@ import "context"
 type ID string
 
 var (
-	schema     Schema[Recipe]     = (RecipeSchema{})
+	schema = NewSchema("recipes", func(r Recipe) []byte {
+		return []byte(r.ID)
+	})
+
 	serializer Serializer[Recipe] = (JSONSerializer[Recipe]{})
 )
 
 type Recipe struct {
 	ID ID
-}
-
-type RecipeSchema struct{}
-
-func (RecipeSchema) Collection() []byte { return []byte("recipes") }
-
-func (RecipeSchema) PrimaryKey(r Recipe) []byte {
-	return []byte(r.ID)
 }
 
 func ExampleCollection() {
