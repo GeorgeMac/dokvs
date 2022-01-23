@@ -10,7 +10,7 @@ test: ## Run test suite
 	$(GO) test ./...
 
 .PHONY: fmt
-fmt: ## Run go fmt -s all over the shop
+fmt: ## Run go fmt all over the shop
 	@$(GO) fmt $(shell find . -name "*.go")
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
