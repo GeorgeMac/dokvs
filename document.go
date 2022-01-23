@@ -35,7 +35,7 @@ func WithSerializer[D any, K AnyBytes](serializer Serializer[D]) func(*Collectio
 func NewCollection[D any, K AnyBytes](schema Schema[D], opts ...func(*Collection[D, K])) Collection[D, K] {
 	c := Collection[D, K]{schema: schema, serializer: JSONSerializer[D]{}}
 
-	Options[Collection[D, K]](opts).Apply(&c)
+	ApplyAll(&c, opts...)
 
 	return c
 }
