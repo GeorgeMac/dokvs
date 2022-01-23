@@ -1,4 +1,4 @@
-package etcdoc
+package dokvs
 
 func ApplyAll[T any](t *T, opts ...func(*T)) {
 	Options[T](opts).Apply(t)

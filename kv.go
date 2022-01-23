@@ -1,4 +1,4 @@
-package etcdoc
+package dokvs
 
 import "context"
 
