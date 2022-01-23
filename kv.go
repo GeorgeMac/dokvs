@@ -2,23 +2,36 @@ package dokvs
 
 import "context"
 
-type KVListPredicate struct {
-	Prefix []byte
-	Offset []byte
-	Limit  int
+type RangeOptions struct {
+	Start []byte
+	End   []byte
+	Limit int
 }
 
 type Item struct {
 	K, V []byte
 }
 
-type KVView interface {
-	Fetch(context.Context, []byte) (Item, error)
-	List(context.Context, KVListPredicate) ([]Item, error)
+type KV interface {
+	View(func(View) error) error
+	Update(func(Update) error) error
 }
 
-type KVUpdate interface {
-	KVView
+type View interface {
+	Keyspace([]byte) (KeyspaceView, error)
+}
+
+type KeyspaceView interface {
+	Range(context.Context, RangeOptions) ([]Item, error)
+}
+
+type Update interface {
+	CreateKeyspace([]byte) error
+	Keyspace([]byte) (KeyspaceUpdate, error)
+}
+
+type KeyspaceUpdate interface {
+	KeyspaceView
 
 	Put(_ context.Context, k, v []byte) error
 	Delete(_ context.Context, k []byte) error

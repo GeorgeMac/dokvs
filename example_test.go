@@ -20,9 +20,12 @@ func ExampleCollection() {
 	recipes := NewCollection[Recipe, ID](schema, WithSerializer[Recipe, ID](serializer))
 
 	ctx := context.Background()
-	var update KVUpdate
-	_ = recipes.Update(update).Put(ctx, Recipe{ID: "my_recipe"})
 
-	var view KVView
-	_, _ = recipes.View(view).Fetch(ctx, ID("my_recipe"))
+	var update Update
+	recipesUpdate, _ := recipes.Update(update)
+	_ = recipesUpdate.Put(ctx, Recipe{ID: "my_recipe"})
+
+	var view View
+	recipesView, _ := recipes.View(view)
+	_, _ = recipesView.Fetch(ctx, ID("my_recipe"))
 }

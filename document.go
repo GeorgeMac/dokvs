@@ -52,27 +52,40 @@ func NewCollection[D any, K AnyBytes](schema CollectionSchema[D], opts ...func(*
 	return c
 }
 
-func (c Collection[D, K]) View(view KVView) CollectionView[D, K] {
-	return CollectionView[D, K]{Collection: c, view: view}
+func (c Collection[D, K]) View(view View) (cv CollectionView[D, K], err error) {
+	cv.Collection = c
+	cv.view, err = view.Keyspace(c.schema.Collection())
+	return
 }
 
-func (c Collection[D, K]) Update(update KVUpdate) CollectionUpdate[D, K] {
-	return CollectionUpdate[D, K]{CollectionView: c.View(update), update: update}
+func (c Collection[D, K]) Update(update Update) (cu CollectionUpdate[D, K], err error) {
+	cu.Collection = c
+	cu.update, err = update.Keyspace(c.schema.Collection())
+	if err != nil {
+		return
+	}
+
+	cu.CollectionView = CollectionView[D, K]{Collection: c, view: cu.update}
+	return
 }
 
 type CollectionView[D any, K AnyBytes] struct {
 	Collection[D, K]
 
-	view KVView
+	view KeyspaceView
 }
 
 func (c CollectionView[D, K]) Fetch(ctx context.Context, key K) (d D, err error) {
-	item, err := c.view.Fetch(ctx, []byte(key))
+	items, err := c.view.Range(ctx, RangeOptions{Start: []byte(key)})
 	if err != nil {
 		return d, err
 	}
 
-	err = c.serializer.Deserialize(item.V, &d)
+	if len(items) == 0 {
+		return d, ErrNotFound
+	}
+
+	err = c.serializer.Deserialize(items[0].V, &d)
 
 	return
 }
@@ -90,7 +103,7 @@ func (c CollectionView[D, K]) List(context.Context, ...ListPredicate) (d D, err 
 type CollectionUpdate[D any, K AnyBytes] struct {
 	CollectionView[D, K]
 
-	update KVUpdate
+	update KeyspaceUpdate
 }
 
 func (c CollectionUpdate[D, K]) Fetch(ctx context.Context, key K) (d D, err error) {
