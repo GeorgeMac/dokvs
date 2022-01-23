@@ -13,8 +13,16 @@ type Item struct {
 }
 
 type KV interface {
+}
+
+type KVView interface {
 	Fetch(context.Context, []byte) (Item, error)
 	List(context.Context, KVListPredicate) ([]Item, error)
+}
+
+type KVUpdate interface {
+	KVView
+
 	Put(_ context.Context, k, v []byte) error
 	Delete(_ context.Context, k []byte) error
 }

@@ -1,7 +1,11 @@
 package etcdoc
 
+import "context"
+
+type ID string
+
 type Recipe struct {
-	ID string
+	ID ID
 }
 
 type RecipeSchema struct{}
@@ -13,7 +17,12 @@ func (RecipeSchema) PrimaryKey(r Recipe) []byte {
 }
 
 func ExampleCollection() {
-	var kv KV
-	recipes := NewCollection(kv, Schema[Recipe](RecipeSchema{}), Serializer[Recipe](JSONSerializer[Recipe]{}))
-	_ = recipes
+	recipes := NewCollection[Recipe, ID](Schema[Recipe](RecipeSchema{}), Serializer[Recipe](JSONSerializer[Recipe]{}))
+
+	ctx := context.Background()
+	var update KVUpdate
+	_ = recipes.Update(update).Put(ctx, Recipe{ID: "my_recipe"})
+
+	var view KVView
+	_, _ = recipes.View(view).Fetch(ctx, ID("my_recipe"))
 }
