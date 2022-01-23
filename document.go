@@ -2,7 +2,6 @@ package etcdoc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 )
 
@@ -11,16 +10,6 @@ var ErrNotFound = errors.New("document not found")
 type Serializer[T any] interface {
 	Serialize(T) ([]byte, error)
 	Deserialize([]byte, *T) error
-}
-
-type JSONSerializer[T any] struct{}
-
-func (s JSONSerializer[T]) Serialize(t T) ([]byte, error) {
-	return json.Marshal(t)
-}
-
-func (d JSONSerializer[T]) Deserialize(v []byte, t *T) error {
-	return json.Unmarshal(v, t)
 }
 
 type AnyBytes interface {
@@ -37,8 +26,18 @@ type Collection[D any, K AnyBytes] struct {
 	serializer Serializer[D]
 }
 
-func NewCollection[D any, K AnyBytes](schema Schema[D], serializer Serializer[D]) Collection[D, K] {
-	return Collection[D, K]{schema: schema, serializer: serializer}
+func WithSerializer[D any, K AnyBytes](serializer Serializer[D]) func(*Collection[D, K]) {
+	return func(c *Collection[D, K]) {
+		c.serializer = serializer
+	}
+}
+
+func NewCollection[D any, K AnyBytes](schema Schema[D], opts ...func(*Collection[D, K])) Collection[D, K] {
+	c := Collection[D, K]{schema: schema, serializer: JSONSerializer[D]{}}
+
+	Options[Collection[D, K]](opts).Apply(&c)
+
+	return c
 }
 
 func (c Collection[D, K]) View(view KVView) CollectionView[D, K] {

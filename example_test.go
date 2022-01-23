@@ -4,6 +4,11 @@ import "context"
 
 type ID string
 
+var (
+	schema     Schema[Recipe]     = (RecipeSchema{})
+	serializer Serializer[Recipe] = (JSONSerializer[Recipe]{})
+)
+
 type Recipe struct {
 	ID ID
 }
@@ -17,7 +22,7 @@ func (RecipeSchema) PrimaryKey(r Recipe) []byte {
 }
 
 func ExampleCollection() {
-	recipes := NewCollection[Recipe, ID](Schema[Recipe](RecipeSchema{}), Serializer[Recipe](JSONSerializer[Recipe]{}))
+	recipes := NewCollection[Recipe, ID](schema, WithSerializer[Recipe, ID](serializer))
 
 	ctx := context.Background()
 	var update KVUpdate

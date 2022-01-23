@@ -12,9 +12,6 @@ type Item struct {
 	K, V []byte
 }
 
-type KV interface {
-}
-
 type KVView interface {
 	Fetch(context.Context, []byte) (Item, error)
 	List(context.Context, KVListPredicate) ([]Item, error)
