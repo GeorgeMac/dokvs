@@ -58,6 +58,10 @@ func (c Collection[D, K]) View(view View) (cv CollectionView[D, K], err error) {
 	return
 }
 
+func (c Collection[D, K]) Init(update Update) error {
+	return update.CreateKeyspace(c.schema.Collection())
+}
+
 func (c Collection[D, K]) Update(update Update) (cu CollectionUpdate[D, K], err error) {
 	cu.Collection = c
 	cu.update, err = update.Keyspace(c.schema.Collection())
