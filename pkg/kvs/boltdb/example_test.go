@@ -3,6 +3,7 @@ package boltdb
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/georgemac/dokvs"
 )
@@ -31,6 +32,12 @@ func Example_Bolt_Collection() {
 		panic(err)
 	}
 
+	defer func() {
+		kv.Close()
+
+		os.Remove("example.bolt")
+	}()
+
 	if err := kv.Update(func(update dokvs.Update) error {
 		if err := recipes.Init(update); err != nil {
 			return err
@@ -45,17 +52,29 @@ func Example_Bolt_Collection() {
 			return err
 		}
 
-		items, err := recipes.Fetch(ctx, ID("my_recipe"))
+		recipe, err := recipes.Fetch(ctx, ID("my_recipe"))
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(items)
+		fmt.Printf("%#v\n", recipe)
+
+		if err := recipes.Put(ctx, Recipe{ID: "second_recipe"}); err != nil {
+			return err
+		}
+
+		allRecipes, err := recipes.List(ctx, dokvs.ListPredicate{})
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%#v\n", allRecipes)
 
 		return nil
 	}); err != nil {
 		panic(err)
 	}
 
-	// OUTPUT: {my_recipe}
+	// OUTPUT: boltdb.Recipe{ID:"my_recipe"}
+	// []boltdb.Recipe{boltdb.Recipe{ID:"my_recipe"}, boltdb.Recipe{ID:"second_recipe"}}
 }

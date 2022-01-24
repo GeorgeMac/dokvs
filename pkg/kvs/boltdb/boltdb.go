@@ -10,6 +10,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+const defaultLimit = 100
+
 var ErrBucketNotExist = errors.New("bucket not exist")
 
 type KV struct {
@@ -54,6 +56,10 @@ type KeyspaceView struct {
 }
 
 func (k KeyspaceView) Range(_ context.Context, rng dokvs.RangeOptions) (items []dokvs.Item, err error) {
+	if rng.Limit < 1 {
+		rng.Limit = defaultLimit
+	}
+
 	if rng.End == nil {
 		if v := k.bucket.Get(rng.Start); v != nil {
 			items = []dokvs.Item{{K: rng.Start, V: v}}
@@ -64,9 +70,15 @@ func (k KeyspaceView) Range(_ context.Context, rng dokvs.RangeOptions) (items []
 
 	cursor := k.bucket.Cursor()
 
-	for k, v := cursor.Seek(rng.Start); bytes.Compare(k, rng.End) < 0; k, v = cursor.Next() {
-		items = append(items, dokvs.Item{K: k, V: v})
-		if len(items) == rng.Limit {
+	key, value := cursor.First()
+	if rng.Start != nil {
+		key, value = cursor.Seek(rng.Start)
+	}
+
+	noEnd := len(rng.End) == 1 && rng.End[0] == '\x00'
+	for ; key != nil && (noEnd || bytes.Compare(key, rng.End) <= 0); key, value = cursor.Next() {
+		items = append(items, dokvs.Item{K: key, V: value})
+		if len(items) >= rng.Limit {
 			break
 		}
 	}

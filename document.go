@@ -99,8 +99,25 @@ type ListPredicate struct {
 	Limit  int
 }
 
-func (c CollectionView[D, K]) List(context.Context, ...ListPredicate) (d D, err error) {
-	err = errors.New("TODO: implement")
+func (c CollectionView[D, K]) List(ctx context.Context, pred ListPredicate) (ds []D, err error) {
+	opts := RangeOptions{
+		Start: pred.Offset,
+		End:   []byte{'\x00'},
+		Limit: pred.Limit,
+	}
+
+	items, err := c.view.Range(ctx, opts)
+	if err != nil {
+		return ds, err
+	}
+
+	ds = make([]D, len(items))
+	for i := range ds {
+		if err = c.serializer.Deserialize(items[i].V, &ds[i]); err != nil {
+			return
+		}
+	}
+
 	return
 }
 
@@ -114,8 +131,8 @@ func (c CollectionUpdate[D, K]) Fetch(ctx context.Context, key K) (d D, err erro
 	return c.CollectionView.Fetch(ctx, key)
 }
 
-func (c CollectionUpdate[D, K]) List(ctx context.Context, pred ...ListPredicate) (d D, err error) {
-	return c.CollectionView.List(ctx, pred...)
+func (c CollectionUpdate[D, K]) List(ctx context.Context, pred ListPredicate) ([]D, error) {
+	return c.CollectionView.List(ctx, pred)
 }
 
 func (c CollectionUpdate[D, K]) Put(ctx context.Context, doc D) error {
