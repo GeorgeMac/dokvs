@@ -1,15 +1,15 @@
-package dokvs
+package kv
 
 import "context"
 
-// Item is a single entry in a Key/Value Keyspace in a Key/Value Store.
+// Item is a single entry in a Key/Value keyspace in a Key/Value store.
 type Item struct {
 	K, V []byte
 }
 
-// KV represents a KV store which support both read-only (View)
-// and writable (Update) transactional operations.
-type KV interface {
+// Store represents a Key/Value store which support both read-only (View)
+// and read-write (Update) transactional operations.
+type Store interface {
 	View(func(View) error) error
 	Update(func(Update) error) error
 }

@@ -1,6 +1,10 @@
 package dokvs
 
-import "context"
+import (
+	"context"
+
+	"github.com/georgemac/dokvs/pkg/kv"
+)
 
 type ID string
 
@@ -21,11 +25,11 @@ func ExampleCollection() {
 
 	ctx := context.Background()
 
-	var update Update
+	var update kv.Update
 	recipesUpdate, _ := recipes.Update(update)
 	_ = recipesUpdate.Put(ctx, Recipe{ID: "my_recipe"})
 
-	var view View
+	var view kv.View
 	recipesView, _ := recipes.View(view)
 	_, _ = recipesView.Fetch(ctx, ID("my_recipe"))
 }

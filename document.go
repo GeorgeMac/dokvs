@@ -3,6 +3,8 @@ package dokvs
 import (
 	"context"
 	"errors"
+
+	"github.com/georgemac/dokvs/pkg/kv"
 )
 
 var ErrNotFound = errors.New("document not found")
@@ -52,17 +54,17 @@ func NewCollection[D any, K AnyBytes](schema CollectionSchema[D], opts ...func(*
 	return c
 }
 
-func (c Collection[D, K]) View(view View) (cv CollectionView[D, K], err error) {
+func (c Collection[D, K]) View(view kv.View) (cv CollectionView[D, K], err error) {
 	cv.Collection = c
 	cv.view, err = view.Keyspace(c.schema.Collection())
 	return
 }
 
-func (c Collection[D, K]) Init(update Update) error {
+func (c Collection[D, K]) Init(update kv.Update) error {
 	return update.CreateKeyspace(c.schema.Collection())
 }
 
-func (c Collection[D, K]) Update(update Update) (cu CollectionUpdate[D, K], err error) {
+func (c Collection[D, K]) Update(update kv.Update) (cu CollectionUpdate[D, K], err error) {
 	cu.Collection = c
 	cu.update, err = update.Keyspace(c.schema.Collection())
 	if err != nil {
@@ -76,11 +78,11 @@ func (c Collection[D, K]) Update(update Update) (cu CollectionUpdate[D, K], err 
 type CollectionView[D any, K AnyBytes] struct {
 	Collection[D, K]
 
-	view KeyspaceView
+	view kv.KeyspaceView
 }
 
 func (c CollectionView[D, K]) Fetch(ctx context.Context, key K) (d D, err error) {
-	items, err := c.view.Range(ctx, RangeOptions{Start: []byte(key)})
+	items, err := c.view.Range(ctx, kv.RangeOptions{Start: []byte(key)})
 	if err != nil {
 		return d, err
 	}
@@ -100,7 +102,7 @@ type ListPredicate struct {
 }
 
 func (c CollectionView[D, K]) List(ctx context.Context, pred ListPredicate) (ds []D, err error) {
-	opts := RangeOptions{
+	opts := kv.RangeOptions{
 		Start: pred.Offset,
 		End:   []byte{'\x00'},
 		Limit: pred.Limit,
@@ -124,7 +126,7 @@ func (c CollectionView[D, K]) List(ctx context.Context, pred ListPredicate) (ds 
 type CollectionUpdate[D any, K AnyBytes] struct {
 	CollectionView[D, K]
 
-	update KeyspaceUpdate
+	update kv.KeyspaceUpdate
 }
 
 func (c CollectionUpdate[D, K]) Fetch(ctx context.Context, key K) (d D, err error) {

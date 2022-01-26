@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/georgemac/dokvs"
+	"github.com/georgemac/dokvs/pkg/kv"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -31,7 +31,7 @@ func (kv KV) Close() error {
 	return kv.db.Close()
 }
 
-func (kv KV) View(fn func(dokvs.View) error) error {
+func (kv KV) View(fn func(kv.View) error) error {
 	return kv.db.View(func(tx *bolt.Tx) error {
 		return fn(View{tx: tx})
 	})
@@ -41,7 +41,7 @@ type View struct {
 	tx *bolt.Tx
 }
 
-func (v View) Keyspace(key []byte) (_ dokvs.KeyspaceView, err error) {
+func (v View) Keyspace(key []byte) (_ kv.KeyspaceView, err error) {
 	view := KeyspaceView{}
 	if view.bucket = v.tx.Bucket(key); view.bucket == nil {
 		err = fmt.Errorf("keyspace %q: ", ErrBucketNotExist)
@@ -55,14 +55,14 @@ type KeyspaceView struct {
 	bucket *bolt.Bucket
 }
 
-func (k KeyspaceView) Range(_ context.Context, rng dokvs.RangeOptions) (items []dokvs.Item, err error) {
+func (k KeyspaceView) Range(_ context.Context, rng kv.RangeOptions) (items []kv.Item, err error) {
 	if rng.Limit < 1 {
 		rng.Limit = defaultLimit
 	}
 
 	if rng.End == nil {
 		if v := k.bucket.Get(rng.Start); v != nil {
-			items = []dokvs.Item{{K: rng.Start, V: v}}
+			items = []kv.Item{{K: rng.Start, V: v}}
 		}
 
 		return
@@ -77,7 +77,7 @@ func (k KeyspaceView) Range(_ context.Context, rng dokvs.RangeOptions) (items []
 
 	noEnd := len(rng.End) == 1 && rng.End[0] == '\x00'
 	for ; key != nil && (noEnd || bytes.Compare(key, rng.End) <= 0); key, value = cursor.Next() {
-		items = append(items, dokvs.Item{K: key, V: value})
+		items = append(items, kv.Item{K: key, V: value})
 		if len(items) >= rng.Limit {
 			break
 		}
@@ -86,7 +86,7 @@ func (k KeyspaceView) Range(_ context.Context, rng dokvs.RangeOptions) (items []
 	return
 }
 
-func (kv KV) Update(fn func(dokvs.Update) error) error {
+func (kv KV) Update(fn func(kv.Update) error) error {
 	return kv.db.Update(func(tx *bolt.Tx) error {
 		return fn(Update{tx: tx})
 	})
@@ -101,7 +101,7 @@ func (u Update) CreateKeyspace(key []byte) error {
 	return err
 }
 
-func (u Update) Keyspace(key []byte) (_ dokvs.KeyspaceUpdate, err error) {
+func (u Update) Keyspace(key []byte) (_ kv.KeyspaceUpdate, err error) {
 	update := KeyspaceUpdate{}
 	if update.bucket = u.tx.Bucket(key); update.bucket == nil {
 		err = fmt.Errorf("keyspace %q: ", ErrBucketNotExist)
@@ -113,7 +113,7 @@ func (u Update) Keyspace(key []byte) (_ dokvs.KeyspaceUpdate, err error) {
 
 type KeyspaceUpdate KeyspaceView
 
-func (u KeyspaceUpdate) Range(ctx context.Context, opts dokvs.RangeOptions) ([]dokvs.Item, error) {
+func (u KeyspaceUpdate) Range(ctx context.Context, opts kv.RangeOptions) ([]kv.Item, error) {
 	return KeyspaceView(u).Range(ctx, opts)
 }
 

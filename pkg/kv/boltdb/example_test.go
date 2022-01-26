@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/georgemac/dokvs"
+	"github.com/georgemac/dokvs/pkg/kv"
 )
 
 type ID string
@@ -27,18 +28,18 @@ func Example_Bolt_Collection() {
 
 	ctx := context.Background()
 
-	kv, err := Open("example.bolt")
+	store, err := Open("example.bolt")
 	if err != nil {
 		panic(err)
 	}
 
 	defer func() {
-		kv.Close()
+		store.Close()
 
 		os.Remove("example.bolt")
 	}()
 
-	if err := kv.Update(func(update dokvs.Update) error {
+	if err := store.Update(func(update kv.Update) error {
 		if err := recipes.Init(update); err != nil {
 			return err
 		}
