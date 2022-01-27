@@ -30,7 +30,7 @@ func Example_Bolt_Collection() {
 	db, cleanup := newBoltDB("example.bolt")
 	defer cleanup()
 
-    store := New(db)
+	store := New(db)
 
 	if err := store.Update(func(update kv.Update) error {
 		if err := recipes.Init(update); err != nil {
