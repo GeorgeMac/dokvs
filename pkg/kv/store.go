@@ -1,6 +1,12 @@
 package kv
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrKeyNotFound is returned when a key is not found.
+var ErrKeyNotFound = errors.New("key not found")
 
 // Item is a single entry in a Key/Value keyspace in a Key/Value store.
 type Item struct {
@@ -21,21 +27,29 @@ type View interface {
 	Keyspace([]byte) (KeyspaceView, error)
 }
 
-// RangeOptions contains a set of predicates to be supplied
-// on Range operation.
+// RangeOptions contains a set of Range operation predicates.
 // RangeOptions is inspired by ETCD's RangeRequest protobuf structure.
-// A range is defined in the form of [Start, End).
+//
+// If End it omitted, then Range behaves like a Get.
+// It returns 0 or 1 keys for an exact match on the provided Start byte-slice.
+//
+// Else it returns the set of keys in the range [Start, End).
+// If end contains the single null-byte, then it returns the range [Start, *).
+// Where * represents no bound on the end of the range (all keys from Start).
 type RangeOptions struct {
 	// Start is the initial location to begin the range operation.
 	// If Start == nil, then the range starts at the beginning of the keyspace.
 	// If Start != nil, then the range starts at the first key in the keyspace,
-	// which is >= Start. e.g.
+	// which is >= Start.
 	Start []byte
 	// End is the non-inclusive end of the range.
-	// If End == nil, then the range is to the end of the entire keyspace.
-	// If End != nul, then the range [Start, End) a.k.a Start >= keys < End.
+	// If End == nil, then Range only returns a single item if Start is present in the keyspace (effectively a Get(key)).
+	// Else If End == []byte{\x00}, then the range is to the end of the entire keyspace [Start, *).
+	// Else the range [Start, End) a.k.a Start >= keys < End.
 	End []byte
 	// Limit is a limit on the number of returned keys.
+	// Limit == 0 means no limit.
+	// Limit > 0 ensures at-most Limit items are returned.
 	Limit int
 }
 

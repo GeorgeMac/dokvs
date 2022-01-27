@@ -18,13 +18,8 @@ type KV struct {
 	db *bolt.DB
 }
 
-func Open(path string) (*KV, error) {
-	db, err := bolt.Open(path, 0666, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &KV{db: db}, nil
+func New(db *bolt.DB) *KV {
+	return &KV{db: db}
 }
 
 func (kv KV) Close() error {
@@ -61,9 +56,12 @@ func (k KeyspaceView) Range(_ context.Context, rng kv.RangeOptions) (items []kv.
 	}
 
 	if rng.End == nil {
-		if v := k.bucket.Get(rng.Start); v != nil {
-			items = []kv.Item{{K: rng.Start, V: v}}
+		v := k.bucket.Get(rng.Start)
+		if v == nil {
+			return nil, fmt.Errorf("key %q: %w", string(rng.Start), kv.ErrKeyNotFound)
 		}
+
+		items = []kv.Item{{K: rng.Start, V: v}}
 
 		return
 	}
@@ -76,7 +74,7 @@ func (k KeyspaceView) Range(_ context.Context, rng kv.RangeOptions) (items []kv.
 	}
 
 	noEnd := len(rng.End) == 1 && rng.End[0] == '\x00'
-	for ; key != nil && (noEnd || bytes.Compare(key, rng.End) <= 0); key, value = cursor.Next() {
+	for ; key != nil && (noEnd || bytes.Compare(key, rng.End) < 0); key, value = cursor.Next() {
 		items = append(items, kv.Item{K: key, V: value})
 		if len(items) >= rng.Limit {
 			break

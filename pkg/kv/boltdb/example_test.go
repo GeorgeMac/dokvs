@@ -3,7 +3,6 @@ package boltdb
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/georgemac/dokvs"
 	"github.com/georgemac/dokvs/pkg/kv"
@@ -28,16 +27,10 @@ func Example_Bolt_Collection() {
 
 	ctx := context.Background()
 
-	store, err := Open("example.bolt")
-	if err != nil {
-		panic(err)
-	}
+	db, cleanup := newBoltDB("example.bolt")
+	defer cleanup()
 
-	defer func() {
-		store.Close()
-
-		os.Remove("example.bolt")
-	}()
+    store := New(db)
 
 	if err := store.Update(func(update kv.Update) error {
 		if err := recipes.Init(update); err != nil {
