@@ -17,3 +17,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Comment Back
         run: gh pr comment ${{ github.event.issue.number }} --body "hello"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
