@@ -1,0 +1,19 @@
+name: Reply to a PR comment
+
+on:
+  - issue_comment
+
+jobs:
+  issue-comment:
+    name: Re-generate, apply and push yaml changes.
+    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.pull_request && github.event.comment.body == 'reply to me' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Checkout Pull Request
+        run: gh pr checkout ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Comment Back
+        run: gh pr comment ${{ github.event.issue.number }} --body "hello"
