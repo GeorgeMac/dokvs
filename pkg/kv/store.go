@@ -3,10 +3,26 @@ package kv
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 // ErrKeyNotFound is returned when a key is not found.
 var ErrKeyNotFound = errors.New("key not found")
+
+// BatchError is a struct containing a slice of errors which also
+// implements the error interface.
+// It is returned when any item in a batch requested via Get
+// results in an error.
+// The errors are indexed based on the key requested in the
+// GetOptions supplied to Get.
+type BatchError struct {
+	Errors []error
+}
+
+// Error returns a string representations of the BatchError
+func (b BatchError) Error() string {
+	return fmt.Sprintf("%v", b.Errors)
+}
 
 // Item is a single entry in a Key/Value keyspace in a Key/Value store.
 type Item struct {
@@ -27,36 +43,73 @@ type View interface {
 	Keyspace([]byte) (KeyspaceView, error)
 }
 
-// RangeOptions contains a set of Range operation predicates.
-// RangeOptions is inspired by ETCD's RangeRequest protobuf structure.
+// GetOptions defines a set of keys which refer to a set of items in a keyspace.
 //
-// If End it omitted, then Range behaves like a Get.
-// It returns 0 or 1 keys for an exact match on the provided Start byte-slice.
+// It is used in a call to KeyspaceView.Get to fetch a batch of items.
+type GetOptions struct {
+	Keys [][]byte
+}
+
+// Key returns a GetOptions which refers to a single key.
+func Key(key []byte) GetOptions {
+	return Batch(key)
+}
+
+// Batch returns a GetOptions which refers to all keys in the set.
+func Batch(keys ...[]byte) GetOptions {
+	return GetOptions{keys}
+}
+
+// RangeOption is a function which configures a RangeOptions
+type RangeOption func(*RangeOptions)
+
+// Start configures the inclusive beginning of a Range call.
+// See RangeOptions{}.
+func Start(key []byte) RangeOption {
+	return func(o *RangeOptions) {
+		o.Start = key
+	}
+}
+
+// End configures the exclusive end of a Range call.
+// See RangeOptions{}.
+func End(key []byte) RangeOption {
+	return func(o *RangeOptions) {
+		o.End = key
+	}
+}
+
+// Limit configures the maximum number of items to return in a Range call.
+// See RangeOptions{}.
+func Limit(n int) RangeOption {
+	return func(o *RangeOptions) {
+		o.Limit = n
+	}
+}
+
+// RangeOptions is used when requesting a Range of items from a key/value store.
 //
-// Else it returns the set of keys in the range [Start, End).
-// If end contains the single null-byte, then it returns the range [Start, *).
-// Where * represents no bound on the end of the range (all keys from Start).
+// It us used in a call to KeyspaceView.Range to fetch a sequence of items.
+// It defines the start, end and a limit on the number of items returned.
+// The zero-value of range options represents a request for the entire keyspace.
 type RangeOptions struct {
-	// Start is the initial location to begin the range operation.
-	// If Start == nil, then the range starts at the beginning of the keyspace.
-	// If Start != nil, then the range starts at the first key in the keyspace,
-	// which is >= Start.
+	// Start defines the inclusive beginning of the range requested in the keyspace.
+	// If Start == nil, this refers to the beginning of the keyspace.
+	// If Start != nil, this refers to items with key >= start.
 	Start []byte
-	// End is the non-inclusive end of the range.
-	// If End == nil, then Range only returns a single item if Start is present in the keyspace (effectively a Get(key)).
-	// Else If End == []byte{\x00}, then the range is to the end of the entire keyspace [Start, *).
-	// Else the range [Start, End) a.k.a Start >= keys < End.
+	// End defines the exclusive end of the range requested in the keyspace.
+	// If End == nil, this refers to all keys until the end of the keyspace.
+	// If End != nil, this refers to items with key < end.
 	End []byte
-	// Limit is a limit on the number of returned keys.
-	// Limit == 0 means no limit.
-	// Limit > 0 ensures at-most Limit items are returned.
+	// Limit is the maximum number of items to return.
 	Limit int
 }
 
 // KeyspaceView is a read-only client for accessing ranges of a single keyspace
 // in a Key/Value store.
 type KeyspaceView interface {
-	Range(context.Context, RangeOptions) ([]Item, error)
+	Get(context.Context, GetOptions) ([]Item, error)
+	Range(context.Context, ...RangeOption) ([]Item, error)
 }
 
 // Update is a read-write transaction of a KV store.

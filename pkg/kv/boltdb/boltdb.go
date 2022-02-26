@@ -12,7 +12,11 @@ import (
 
 const defaultLimit = 100
 
-var ErrBucketNotExist = errors.New("bucket not exist")
+var (
+	ErrBucketNotExist = errors.New("bucket not exist")
+
+	_ kv.Store = (*KV)(nil)
+)
 
 type KV struct {
 	db *bolt.DB
@@ -50,20 +54,41 @@ type KeyspaceView struct {
 	bucket *bolt.Bucket
 }
 
-func (k KeyspaceView) Range(_ context.Context, rng kv.RangeOptions) (items []kv.Item, err error) {
-	if rng.Limit < 1 {
-		rng.Limit = defaultLimit
+func (k KeyspaceView) Get(_ context.Context, opts kv.GetOptions) (items []kv.Item, err error) {
+	var berr *kv.BatchError
+	items = make([]kv.Item, len(opts.Keys))
+
+	for i := range opts.Keys {
+		items[i].K = opts.Keys[i]
+		if items[i].V = k.bucket.Get(opts.Keys[i]); items[i].V == nil {
+			if berr == nil {
+				berr = &kv.BatchError{
+					Errors: make([]error, len(opts.Keys)),
+				}
+			}
+
+			berr.Errors[i] = kv.ErrKeyNotFound
+		}
 	}
 
-	if rng.End == nil {
-		v := k.bucket.Get(rng.Start)
-		if v == nil {
-			return nil, fmt.Errorf("key %q: %w", string(rng.Start), kv.ErrKeyNotFound)
-		}
+	// only assign berr to err if not-nil to avoid
+	// returning a (*BatchError)(nil) as err which
+	// will would result in the returned err != nil.
+	if berr != nil {
+		err = berr
+	}
 
-		items = []kv.Item{{K: rng.Start, V: v}}
+	return
+}
 
-		return
+func (k KeyspaceView) Range(_ context.Context, opts ...kv.RangeOption) (items []kv.Item, err error) {
+	var rng kv.RangeOptions
+	for _, opt := range opts {
+		opt(&rng)
+	}
+
+	if rng.Limit < 1 {
+		rng.Limit = defaultLimit
 	}
 
 	cursor := k.bucket.Cursor()
@@ -73,12 +98,11 @@ func (k KeyspaceView) Range(_ context.Context, rng kv.RangeOptions) (items []kv.
 		key, value = cursor.Seek(rng.Start)
 	}
 
-	noEnd := len(rng.End) == 1 && rng.End[0] == '\x00'
-	for ; key != nil && (noEnd || bytes.Compare(key, rng.End) < 0); key, value = cursor.Next() {
-		items = append(items, kv.Item{K: key, V: value})
+	for ; key != nil && (rng.End == nil || bytes.Compare(key, rng.End) < 0); key, value = cursor.Next() {
 		if len(items) >= rng.Limit {
 			break
 		}
+		items = append(items, kv.Item{K: key, V: value})
 	}
 
 	return
@@ -111,8 +135,12 @@ func (u Update) Keyspace(key []byte) (_ kv.KeyspaceUpdate, err error) {
 
 type KeyspaceUpdate KeyspaceView
 
-func (u KeyspaceUpdate) Range(ctx context.Context, opts kv.RangeOptions) ([]kv.Item, error) {
-	return KeyspaceView(u).Range(ctx, opts)
+func (u KeyspaceUpdate) Get(ctx context.Context, opts kv.GetOptions) ([]kv.Item, error) {
+	return KeyspaceView(u).Get(ctx, opts)
+}
+
+func (u KeyspaceUpdate) Range(ctx context.Context, opts ...kv.RangeOption) ([]kv.Item, error) {
+	return KeyspaceView(u).Range(ctx, opts...)
 }
 
 func (u KeyspaceUpdate) Put(_ context.Context, k, v []byte) error {

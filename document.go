@@ -82,7 +82,7 @@ type CollectionView[D any, K AnyBytes] struct {
 }
 
 func (c CollectionView[D, K]) Fetch(ctx context.Context, key K) (d D, err error) {
-	items, err := c.view.Range(ctx, kv.RangeOptions{Start: []byte(key)})
+	items, err := c.view.Get(ctx, kv.Key([]byte(key)))
 	if err != nil {
 		return d, err
 	}
@@ -102,13 +102,7 @@ type ListPredicate struct {
 }
 
 func (c CollectionView[D, K]) List(ctx context.Context, pred ListPredicate) (ds []D, err error) {
-	opts := kv.RangeOptions{
-		Start: pred.Offset,
-		End:   []byte{'\x00'},
-		Limit: pred.Limit,
-	}
-
-	items, err := c.view.Range(ctx, opts)
+	items, err := c.view.Range(ctx, kv.Start(pred.Offset), kv.Limit(pred.Limit))
 	if err != nil {
 		return ds, err
 	}

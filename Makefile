@@ -1,4 +1,4 @@
-GO ?= go1.18beta1
+GO ?= go1.18beta2
 export GO
 
 .PHONY: build
