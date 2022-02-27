@@ -14,7 +14,7 @@ By means of applying them to a problem I am familiar with.
 ## Backends
 
 - [x] [BoltDB](./pkg/kvs/boltdb)
-- [ ] Etcd
+- [x] [Etcd](./pkg/kvs/etcd)
 
 ## Inspirations
 
