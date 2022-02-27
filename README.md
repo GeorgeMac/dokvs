@@ -13,8 +13,8 @@ By means of applying them to a problem I am familiar with.
 
 ## Backends
 
-- [x] [BoltDB](./pkg/kvs/boltdb)
-- [x] [Etcd](./pkg/kvs/etcd)
+- [x] [BoltDB](./pkg/kv/boltdb)
+- [x] [Etcd](./pkg/kv/etcd)
 
 ## Inspirations
 
