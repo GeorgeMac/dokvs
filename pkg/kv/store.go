@@ -6,6 +6,10 @@ import (
 	"fmt"
 )
 
+// ErrKeyspaceNotFound is returned when the keyspace requested
+// is not found in the store.
+var ErrKeyspaceNotFound = errors.New("keyspace not found")
+
 // ErrKeyNotFound is returned when a key is not found.
 var ErrKeyNotFound = errors.New("key not found")
 
